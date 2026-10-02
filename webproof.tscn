@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://bfkay2eytsdef"]
+
+[ext_resource type="Script" uid="uid://dhde4nfesfkxo" path="res://scripts/web_proof.gd" id="1_v7ft2"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_13gqn"]
+
+[node name="webproof" type="Node3D" unique_id=1109467774]
+script = ExtResource("1_v7ft2")
+
+[node name="proofcube" type="MeshInstance3D" parent="." unique_id=1478088119]
+mesh = SubResource("BoxMesh_13gqn")
+
+[node name="proofcamera" type="Camera3D" parent="." unique_id=866164905]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 5)
+
+[node name="prooflight" type="DirectionalLight3D" parent="." unique_id=54969328]
+
+[node name="fpslabel" type="Label" parent="." unique_id=1234347790]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 60.0
+offset_bottom = 43.0
+text = "FPS: --"

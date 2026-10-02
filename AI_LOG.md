@@ -1,0 +1,1 @@
+2026-10-02 | ChatGPT | Helped build the initial Godot WebProof scene, FPS counter, and web export proof.

@@ -1,17 +1,18 @@
 class_name BattleCombatant
 extends RefCounted
+## Authoritative runtime state of one fighter. No visuals in here.
 
+enum CombatClass { VISIBLE, HIGH_ENERGY, LOW_ENERGY }
+enum StatusKind { OFFENSE_BUFF, OFFENSE_DEBUFF, DEFENSE_BUFF, DEFENSE_DEBUFF }
 
 var character_name: String = ""
-var combat_class: String = ""
+var combat_class: CombatClass = CombatClass.VISIBLE
 
-var max_hp: int = 0
-var hp: int = 0
-
+var max_hp: int = 1
+var hp: int = 1
 var max_lp: int = 0
 var lp: int = 0
-
-var speed: int = 0
+var speed: int = 0   # kept for the future, turn order is side-based
 
 var is_enemy: bool = false
 var is_alive: bool = true
@@ -26,59 +27,139 @@ var defense_debuff_turns: int = 0
 var offense_debuff_turns: int = 0
 
 var skill_ids: Array[String] = []
+var attack_skill_id: String = BattleSkills.ATTACK
+var ai_guard_chance: float = 0.0   # enemies only
+var visual_scale: float = 1.0      # hint for the actor, not used by rules
 
 
-func _init(
+static func create(
 	p_name: String,
-	p_class: String,
+	p_class: CombatClass,
 	p_hp: int,
 	p_lp: int,
 	p_speed: int,
 	p_is_enemy: bool
-) -> void:
-	character_name = p_name
-	combat_class = p_class
-
-	max_hp = p_hp
-	hp = p_hp
-
-	max_lp = p_lp
-	lp = p_lp
-
-	speed = p_speed
-
-	is_enemy = p_is_enemy
+) -> BattleCombatant:
+	var c: BattleCombatant = BattleCombatant.new()
+	c.character_name = p_name
+	c.combat_class = p_class
+	c.max_hp = p_hp
+	c.hp = p_hp
+	c.max_lp = p_lp
+	c.lp = p_lp
+	c.speed = p_speed
+	c.is_enemy = p_is_enemy
+	return c
 
 
-func take_damage(amount: int) -> void:
-	hp -= amount
+# ---------------------------------------------------------
+# HP / LP
+# ---------------------------------------------------------
 
+func take_damage(amount: int) -> int:
+	if not is_alive:
+		return 0
+	var applied: int = mini(maxi(amount, 0), hp)
+	hp -= applied
 	if hp <= 0:
 		hp = 0
 		is_alive = false
+		is_guarding = false
+	return applied
 
 
-func heal(amount: int) -> void:
-	hp = min(
-		hp + amount,
-		max_hp
-	)
+func heal(amount: int) -> int:
+	if not is_alive:
+		return 0
+	var before: int = hp
+	hp = mini(hp + maxi(amount, 0), max_hp)
+	return hp - before
 
 
-func restore_between_rooms() -> void:
+func can_afford(skill: BattleSkill) -> bool:
+	return lp >= skill.lp_cost
+
+
+func spend_lp(amount: int) -> bool:
+	if lp < amount:
+		return false
+	lp -= amount
+	return true
+
+
+# ---------------------------------------------------------
+# GUARD
+# ---------------------------------------------------------
+
+func clear_guard() -> void:
+	is_guarding = false
+
+
+# ---------------------------------------------------------
+# STATUSES
+# Rule: each of the four statuses has its own timer. Reapplying the same one
+# refreshes it. A buff and a debuff on the same stat can be active together;
+# their multipliers multiply (1.25 x 0.75 = 0.9375). All of it is recomputed in
+# _recalculate_multipliers() so there is exactly one place to change.
+# ---------------------------------------------------------
+
+func apply_status(kind: StatusKind, turns: int) -> void:
+	match kind:
+		StatusKind.OFFENSE_BUFF:
+			offense_buff_turns = turns
+		StatusKind.OFFENSE_DEBUFF:
+			offense_debuff_turns = turns
+		StatusKind.DEFENSE_BUFF:
+			defense_buff_turns = turns
+		StatusKind.DEFENSE_DEBUFF:
+			defense_debuff_turns = turns
+	_recalculate_multipliers()
+
+
+## Called once at the END of every round. Returns statuses that just expired.
+func tick_statuses() -> Array[StatusKind]:
+	var expired: Array[StatusKind] = []
+	if offense_buff_turns > 0:
+		offense_buff_turns -= 1
+		if offense_buff_turns == 0:
+			expired.append(StatusKind.OFFENSE_BUFF)
+	if offense_debuff_turns > 0:
+		offense_debuff_turns -= 1
+		if offense_debuff_turns == 0:
+			expired.append(StatusKind.OFFENSE_DEBUFF)
+	if defense_buff_turns > 0:
+		defense_buff_turns -= 1
+		if defense_buff_turns == 0:
+			expired.append(StatusKind.DEFENSE_BUFF)
+	if defense_debuff_turns > 0:
+		defense_debuff_turns -= 1
+		if defense_debuff_turns == 0:
+			expired.append(StatusKind.DEFENSE_DEBUFF)
+	_recalculate_multipliers()
+	return expired
+
+
+func _recalculate_multipliers() -> void:
+	offense_multiplier = 1.0
+	defense_multiplier = 1.0
+	if offense_buff_turns > 0:
+		offense_multiplier *= BattleRules.OFFENSE_BUFF_MULTIPLIER
+	if offense_debuff_turns > 0:
+		offense_multiplier *= BattleRules.OFFENSE_DEBUFF_MULTIPLIER
+	if defense_buff_turns > 0:
+		defense_multiplier *= BattleRules.DEFENSE_BUFF_MULTIPLIER
+	if defense_debuff_turns > 0:
+		defense_multiplier *= BattleRules.DEFENSE_DEBUFF_MULTIPLIER
+
+
+## Between rooms/battles: full restore and neutral statuses.
+func reset_for_new_battle() -> void:
 	hp = max_hp
 	lp = max_lp
 	is_alive = true
 	is_guarding = false
-
-	offense_multiplier = 1.0
-	defense_multiplier = 1.0
-
-	defense_buff_turns = 0
 	offense_buff_turns = 0
-	defense_debuff_turns = 0
 	offense_debuff_turns = 0
-
-
-func reset_guard() -> void:
-	is_guarding = false
+	defense_buff_turns = 0
+	defense_debuff_turns = 0
+	_recalculate_multipliers()

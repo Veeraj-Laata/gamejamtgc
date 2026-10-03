@@ -1,3 +1,21 @@
-# Godot 4+ specific ignores
+# Godot 4+ generated files
 .godot/
+
+# Browser/export builds
+build1/
+builds/
+
+# Exported Web files
+*.wasm
+*.pck
+*.html
+*.zip
+
+# Temporary Godot files
+*.tmp
+
+# Godot imported/generated files
+*.import
+
+# Android
 /android/

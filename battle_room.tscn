@@ -1,0 +1,77 @@
+[gd_scene format=3 uid="uid://d4j1npe2rcbn4"]
+
+[ext_resource type="Script" uid="uid://deq55svtcycoy" path="res://battle/battle_room.gd" id="1_phori"]
+[ext_resource type="Script" uid="uid://1uiijtws5tis" path="res://battle/ui/noir_panel.gd" id="2_j2bqw"]
+[ext_resource type="Script" uid="uid://cq37pwhd2fvjc" path="res://battle/ui/noir_ui_postprocess.gd" id="3_fnp1n"]
+[ext_resource type="AudioStream" uid="uid://dlwx02rcjsptd" path="res://audio/music/battle.ogg" id="4_c4u0s"]
+
+[sub_resource type="Environment" id="Environment_13gqn"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_13gqn"]
+
+[node name="battle_room" type="Node3D" unique_id=314378036]
+script = ExtResource("1_phori")
+
+[node name="BattleUI" type="CanvasLayer" parent="." unique_id=111357230]
+
+[node name="Label" type="Label" parent="BattleUI" unique_id=445470774]
+offset_left = 50.0
+offset_top = 50.0
+offset_right = 119.0
+offset_bottom = 99.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 32
+text = "GUI TEST
+"
+
+[node name="NoirPanel" type="Control" parent="BattleUI" unique_id=1396690675]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("2_j2bqw")
+
+[node name="NoirUIPostProcess" type="CanvasGroup" parent="BattleUI" unique_id=1226316180]
+script = ExtResource("3_fnp1n")
+
+[node name="battlestage" type="Node3D" parent="." unique_id=231590369]
+
+[node name="BattleCamera" type="Camera3D" parent="battlestage" unique_id=715247915]
+transform = Transform3D(-0.19984436, 0.22953682, -0.9525624, 0.022070922, 0.9729813, 0.2298267, 0.9795791, 0.024905639, -0.1995109, -0.4047506, 1.513469, -1.6760962)
+
+[node name="BattleEnvironment" type="WorldEnvironment" parent="battlestage" unique_id=700807425]
+environment = SubResource("Environment_13gqn")
+
+[node name="BattleGround" type="MeshInstance3D" parent="battlestage" unique_id=170344626]
+transform = Transform3D(3.185, 0, 0, 0, 1.41, 0, 0, 0, 4.645, 3.013393, 0, 0)
+mesh = SubResource("PlaneMesh_13gqn")
+
+[node name="SpawnPoints" type="Node3D" parent="." unique_id=627739128]
+
+[node name="Ally_0" type="Marker3D" parent="SpawnPoints" unique_id=1082429995]
+transform = Transform3D(1.42, 0, 0, 0, 1.42, 0, 0, 0, 1.42, 2.323698, 0, 0)
+
+[node name="Ally_1" type="Marker3D" parent="SpawnPoints" unique_id=1732641419]
+transform = Transform3D(-0.71961164, 0, 0.14961317, 0, 0.735, 0, -0.14961317, 0, -0.71961164, 4.7004595, 0, 5.3061514)
+
+[node name="Ally_2" type="Marker3D" parent="SpawnPoints" unique_id=1600557567]
+transform = Transform3D(0.5341154, 0, 0.226099, 0, 0.58, 0, -0.226099, 0, 0.5341154, 5.9516554, 0, -5.734034)
+
+[node name="Enemy_0" type="Marker3D" parent="SpawnPoints" unique_id=1881423789]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.74652, 0, 3.6219826)
+
+[node name="Enemy_1" type="Marker3D" parent="SpawnPoints" unique_id=1312390647]
+transform = Transform3D(0.9388894, 0, 0.3442189, 0, 1, 0, -0.3442189, 0, 0.9388894, 15.648106, 0, -3.3847451)
+
+[node name="BattleActors" type="Node3D" parent="." unique_id=474454804]
+
+[node name="AllyActors" type="Node3D" parent="BattleActors" unique_id=2056341012]
+
+[node name="EnemyActors" type="Node3D" parent="BattleActors" unique_id=1363257172]
+
+[node name="BattleSpawner" type="Node3D" parent="." unique_id=645104052]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.82496977, 0, 0)
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=92794226]
+stream = ExtResource("4_c4u0s")
+volume_db = -7.298

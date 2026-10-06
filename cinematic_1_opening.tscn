@@ -1,0 +1,1178 @@
+[gd_scene format=3 uid="uid://qnu2bw01oj45"]
+
+[sub_resource type="GDScript" id="GDScript_x5ujm"]
+script/source = "
+extends Node3D
+
+@export_file(\"*.tscn\") var battle_scene_path: String = \"res://battle_room.tscn\"
+@export var auto_start: bool = true
+
+
+# ============================================================
+# CAMERA
+# ============================================================
+
+@export_category(\"Cinematic Camera\")
+
+@export var camera_position: Vector3 = Vector3(
+	3.4,
+	1.65,
+	3.8
+)
+
+@export var camera_fov: float = 42.0
+
+@export var camera_look_at: Vector3 = Vector3(
+	0.0,
+	1.35,
+	0.0
+)
+
+# ============================================================
+# TIMING
+# ============================================================
+
+const DIALOGUE_MIN_TIME: float = 2.0
+const DIALOGUE_TIME_PER_LINE: float = 3.0
+
+# ============================================================
+# ASSETS
+# ============================================================
+
+const PLAYER_MODEL: String = (
+	\"res://assets/animations/Smoking.fbx\"
+)
+
+const FONT_PATH: String = (
+	\"res://assets/font/Bangers-Regular.ttf\"
+)
+
+# ============================================================
+# DIALOGUE
+# ============================================================
+
+# Replace your OPENING_DIALOGUE with this:
+
+const OPENING_DIALOGUE: Array = [
+	[\"Soulanki\", \"Control, we're at the entrance.\"],
+	[\"Control\", \"Copy. Team?\"],
+	[\"Soulanki\", \"Aoryn. Feydor. Ready.\"],
+	[\"Control\", \"Good. Keep them close. First mission as captain.\"],
+	[\"Soulanki\", \"I know.\"],
+	[\"Control\", \"Five WVLNTH agents went in before you. We lost contact with all of them.\"],
+	[\"Soulanki\", \"Any last transmission?\"],
+	[\"Control\", \"Nothing useful.\"],
+	[\"Aoryn\", \"What do we know about the RIFT?\"],
+	[\"Control\", \"It opened under the subway. Negative emotion levels were already high.\"],
+	[\"Feydor\", \"And it's growing?\"],
+	[\"Control\", \"Yes. Fast.\"],
+	[\"Soulanki\", \"Because it's feeding.\"],
+	[\"Control\", \"Exactly. Anything it pulls in becomes part of the hive.\"],
+	[\"Aoryn\", \"And the hive shares information.\"],
+	[\"Control\", \"Through twIST.\"],
+	[\"Soulanki\", \"So it'll learn what we use against it.\"],
+	[\"Control\", \"If you give it enough data.\"],
+	[\"Feydor\", \"Meaning don't repeat ourselves.\"],
+	[\"Soulanki\", \"That's the short version.\"],
+	[\"Control\", \"Seal the RIFT before it gets any larger.\"],
+	[\"Soulanki\", \"Understood.\"],
+	[\"Soulanki\", \"Let's move.\"]
+]
+
+const TRAIN_ONE_DIALOGUE: Array = [
+	[\"Soulanki\", \"Hold.\"],
+	[\"Aoryn\", \"What?\"],
+	[\"Soulanki\", \"The resistance changed.\"],
+	[\"Feydor\", \"TwIST?\"],
+	[\"Soulanki\", \"Yeah.\"],
+	[\"Control\", \"Confirmed. It's adapting to your attacks.\"],
+	[\"Aoryn\", \"Already?\"],
+	[\"Control\", \"It's learning quickly.\"],
+	[\"Soulanki\", \"Then we change faster.\"],
+	[\"Feydor\", \"How long before it catches up?\"],
+	[\"Control\", \"Can't tell you.\"],
+	[\"Soulanki\", \"Fine. We'll find out.\"],
+	[\"Control\", \"Keep the team together.\"],
+	[\"Soulanki\", \"We're together.\"]
+]
+
+const TRAIN_TWO_DIALOGUE: Array = [
+	[\"Soulanki\", \"Control, status.\"],
+	[\"Control\", \"Most signatures are gone.\"],
+	[\"Soulanki\", \"Most?\"],
+	[\"Control\", \"One large signature remains.\"],
+	[\"Aoryn\", \"I don't see anything.\"],
+	[\"Control\", \"Neither do we.\"],
+	[\"Feydor\", \"That's reassuring.\"],
+	[\"Soulanki\", \"No, it isn't.\"],
+	[\"Control\", \"The hive is masking it.\"],
+	[\"Soulanki\", \"Can we seal the RIFT without finding it?\"],
+	[\"Control\", \"No.\"],
+	[\"Soulanki\", \"Then we find it.\"],
+	[\"Control\", \"Be careful. It's had a lot of time to learn from you.\"],
+	[\"Soulanki\", \"So have we.\"]
+]
+
+const ENDING_DIALOGUE: Array = [
+	[\"Soulanki\", \"Control, it's sealed.\"],
+	[\"Control\", \"Confirmed. No residual activity.\"],
+	[\"Soulanki\", \"Good.\"],
+	[\"Control\", \"Team status.\"],
+	[\"Soulanki\", \"Aoryn's alive. Feydor too. Both injured.\"],
+	[\"Control\", \"The five agents who went in first?\"],
+	[\"Soulanki\", \"Dead.\"],
+	[\"Control\", \"Confirmed?\"],
+	[\"Soulanki\", \"I saw them.\"],
+	[\"Control\", \"Understood.\"],
+	[\"Soulanki\", \"The RIFT took them pretty quickly.\"],
+	[\"Control\", \"We'll update the report.\"],
+	[\"Control\", \"How did the recruits handle it?\"],
+	[\"Soulanki\", \"They held up.\"],
+	[\"Control\", \"And you?\"],
+	[\"Soulanki\", \"I'm fine.\"],
+	[\"Control\", \"You always say that.\"],
+	[\"Soulanki\", \"Usually works.\"],
+	[\"Control\", \"Evac is two minutes out.\"],
+	[\"Soulanki\", \"Copy.\"],
+	[\"Control\", \"First mission as captain.\"],
+	[\"Soulanki\", \"Could've been easier.\"],
+	[\"Control\", \"Could've been worse.\"],
+	[\"Soulanki\", \"Yeah.\"],
+	[\"Soulanki\", \"Waiting for evac.\"]
+]
+
+# ============================================================
+# RUNTIME
+# ============================================================
+
+var environment: Environment = null
+var camera: Camera3D = null
+var player_character: Node3D = null
+var snow_particles: GPUParticles3D = null
+var cigar_smoke: GPUParticles3D = null
+var cigar_tip_glow: OmniLight3D = null
+var black_leaves: GPUParticles3D = null
+
+var dialogue_panel: Panel = null
+var dialogue_name: Label = null
+var dialogue_text: Label = null
+
+
+# ============================================================
+# READY
+# ============================================================
+
+func _ready() -> void:
+	_build_world()
+	_build_camera()
+	_build_character()
+	_build_ui()
+	_set_opening_visuals()
+
+	if auto_start:
+		call_deferred(\"_start_cinematic\")
+
+
+# ============================================================
+# WORLD
+# ============================================================
+
+func _build_world() -> void:
+	var world_environment: WorldEnvironment = (
+		WorldEnvironment.new()
+	)
+
+	environment = Environment.new()
+
+	# PURE BLACK BACKGROUND
+	environment.background_mode = (
+		Environment.BG_COLOR
+	)
+
+	environment.background_color = Color.BLACK
+
+	# Very subtle cold ambient light.
+	environment.ambient_light_source = (
+		Environment.AMBIENT_SOURCE_COLOR
+	)
+
+	environment.ambient_light_color = Color(
+		0.08,
+		0.10,
+		0.18,
+		1.0
+	)
+
+	environment.ambient_light_energy = 0.35
+
+	# Subtle atmospheric fog.
+	environment.fog_enabled = true
+
+	environment.fog_light_color = Color(
+		0.015,
+		0.025,
+		0.06,
+		1.0
+	)
+
+	environment.fog_light_energy = 0.20
+
+	environment.fog_density = 0.018
+
+	world_environment.environment = environment
+
+	add_child(world_environment)
+
+	# ========================================================
+	# COLD KEY LIGHT
+	# ========================================================
+
+	var key_light: DirectionalLight3D = (
+		DirectionalLight3D.new()
+	)
+
+	key_light.name = \"ColdKeyLight\"
+
+	key_light.light_color = Color(
+		0.35,
+		0.50,
+		1.0,
+		1.0
+	)
+
+	key_light.light_energy = 0.7
+
+	key_light.rotation_degrees = Vector3(
+		-35.0,
+		-35.0,
+		0.0
+	)
+
+	add_child(key_light)
+
+	# ========================================================
+	# BLUE RIM LIGHT
+	# ========================================================
+
+	var rim_light: OmniLight3D = (
+		OmniLight3D.new()
+	)
+
+	rim_light.name = \"BlueRimLight\"
+
+	rim_light.position = Vector3(
+		-2.0,
+		2.5,
+		-2.0
+	)
+
+	rim_light.light_color = Color(
+		0.05,
+		0.20,
+		1.0,
+		1.0
+	)
+
+	rim_light.light_energy = 3.0
+
+	rim_light.omni_range = 7.0
+
+	add_child(rim_light)
+
+	_build_snow()
+	_build_black_leaves()
+
+
+# ============================================================
+# SNOW
+# ============================================================
+
+func _build_snow() -> void:
+	snow_particles = GPUParticles3D.new()
+
+	snow_particles.name = \"Snow\"
+
+	snow_particles.amount = 500
+
+	snow_particles.lifetime = 7.0
+
+	snow_particles.randomness = 0.4
+
+	snow_particles.preprocess = 5.0
+
+	snow_particles.visibility_aabb = AABB(
+		Vector3(-10.0, -2.0, -10.0),
+		Vector3(20.0, 14.0, 20.0)
+	)
+
+	var process_material: ParticleProcessMaterial = (
+		ParticleProcessMaterial.new()
+	)
+
+	process_material.emission_shape = (
+		ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	)
+
+	process_material.emission_box_extents = Vector3(
+		7.0,
+		3.0,
+		7.0
+	)
+
+	process_material.direction = Vector3(
+		0.0,
+		-1.0,
+		0.0
+	)
+
+	process_material.spread = 15.0
+
+	process_material.initial_velocity_min = 0.5
+	process_material.initial_velocity_max = 1.3
+
+	process_material.gravity = Vector3(
+		0.0,
+		-0.25,
+		0.0
+	)
+
+	process_material.scale_min = 0.35
+	process_material.scale_max = 0.75
+
+	snow_particles.process_material = process_material
+
+	var snow_mesh: QuadMesh = QuadMesh.new()
+
+	snow_mesh.size = Vector2(
+		0.045,
+		0.045
+	)
+
+	var snow_material: StandardMaterial3D = (
+		StandardMaterial3D.new()
+	)
+
+	snow_material.shading_mode = (
+		BaseMaterial3D.SHADING_MODE_UNSHADED
+	)
+
+	snow_material.transparency = (
+		BaseMaterial3D.TRANSPARENCY_ALPHA
+	)
+
+	snow_material.albedo_color = Color(
+		0.85,
+		0.92,
+		1.0,
+		0.90
+	)
+
+	snow_mesh.material = snow_material
+
+	snow_particles.draw_pass_1 = snow_mesh
+
+	add_child(snow_particles)
+
+
+# ============================================================
+# BLACK LEAVES (ENDING)
+# ============================================================
+
+func _build_black_leaves() -> void:
+	black_leaves = GPUParticles3D.new()
+	black_leaves.name = \"BlackLeaves\"
+	black_leaves.amount = 60
+	black_leaves.lifetime = 8.0
+	black_leaves.randomness = 0.65
+	black_leaves.preprocess = 3.0
+	black_leaves.visible = false
+	black_leaves.visibility_aabb = AABB(
+		Vector3(-9.0, -2.0, -8.0),
+		Vector3(18.0, 12.0, 16.0)
+	)
+
+	var process_material := ParticleProcessMaterial.new()
+	process_material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	process_material.emission_box_extents = Vector3(7.0, 3.0, 6.0)
+	process_material.direction = Vector3(-0.15, -0.35, -0.05)
+	process_material.spread = 35.0
+	process_material.initial_velocity_min = 0.25
+	process_material.initial_velocity_max = 0.65
+	process_material.gravity = Vector3(0.0, -0.03, 0.0)
+	process_material.turbulence_enabled = true
+	process_material.turbulence_noise_strength = 0.45
+	process_material.turbulence_noise_scale = 1.8
+	process_material.scale_min = 0.65
+	process_material.scale_max = 1.15
+
+	black_leaves.process_material = process_material
+
+	var leaf_mesh := QuadMesh.new()
+	leaf_mesh.size = Vector2(0.10, 0.045)
+	leaf_mesh.orientation = PlaneMesh.FACE_Z
+
+	var leaf_material := StandardMaterial3D.new()
+	leaf_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	leaf_material.albedo_color = Color(0.005, 0.005, 0.008, 1.0)
+	leaf_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+
+	leaf_mesh.material = leaf_material
+	black_leaves.draw_pass_1 = leaf_mesh
+	add_child(black_leaves)
+
+
+# ============================================================
+# CAMERA
+# ============================================================
+
+func _build_camera() -> void:
+	camera = Camera3D.new()
+
+	camera.name = \"CinematicCamera\"
+
+	camera.position = camera_position
+
+	camera.fov = camera_fov
+
+	add_child(camera)
+
+	camera.current = true
+
+	camera.look_at(
+		camera_look_at,
+		Vector3.UP
+	)
+
+
+# ============================================================
+# SOULANKI
+# ============================================================
+
+func _build_character() -> void:
+	player_character = _load_model(
+		PLAYER_MODEL
+	)
+
+	if player_character == null:
+		return
+
+	player_character.name = \"Soulanki\"
+
+	player_character.position = Vector3(
+		0.0,
+		0.0,
+		0.0
+	)
+
+	# Face directly toward the camera.
+	#
+	# The FBX faces toward +Z, while the camera is
+	# positioned on +Z looking toward Soulanki.
+	player_character.look_at(
+		camera_position,
+		Vector3.UP
+	)
+
+	add_child(player_character)
+
+	var animation_player: AnimationPlayer = (
+		_find_animation_player(
+			player_character
+		)
+	)
+
+	if animation_player != null:
+		_play_first_animation(
+			animation_player
+		)
+
+	# ALWAYS BLUE.
+	_apply_blue_shader(
+		player_character
+	)
+
+	_build_cigar_smoke(player_character)
+	_build_cigar_tip(player_character)
+
+
+func _load_model(path: String) -> Node3D:
+	if not ResourceLoader.exists(path):
+		push_warning(
+			\"Cinematic model not found: \"
+			+ path
+		)
+
+		return null
+
+	var packed_scene: PackedScene = (
+		load(path) as PackedScene
+	)
+
+	if packed_scene == null:
+		return null
+
+	var instance: Node = (
+		packed_scene.instantiate()
+	)
+
+	if instance is Node3D:
+		return instance as Node3D
+
+	instance.queue_free()
+
+	return null
+
+
+func _find_animation_player(
+	root: Node
+) -> AnimationPlayer:
+
+	if root is AnimationPlayer:
+		return root as AnimationPlayer
+
+	for child: Node in root.get_children():
+		var found: AnimationPlayer = (
+			_find_animation_player(child)
+		)
+
+		if found != null:
+			return found
+
+	return null
+
+
+func _play_first_animation(
+	animation_player: AnimationPlayer
+) -> void:
+
+	if animation_player == null:
+		return
+
+	for animation_name: String in (
+		animation_player.get_animation_list()
+	):
+		if animation_name == \"RESET\":
+			continue
+
+		var animation: Animation = (
+			animation_player.get_animation(
+				animation_name
+			)
+		)
+
+		if animation != null:
+			animation.loop_mode = (
+				Animation.LOOP_LINEAR
+			)
+
+		animation_player.play(
+			animation_name,
+			0.15
+		)
+
+		return
+
+
+# ============================================================
+# BLUE SHADER
+# ============================================================
+
+func _apply_blue_shader(root: Node) -> void:
+	for child: Node in root.get_children():
+
+		if child is MeshInstance3D:
+			var mesh_instance: MeshInstance3D = (
+				child as MeshInstance3D
+			)
+
+			var mesh_name: String = mesh_instance.name.to_lower()
+
+			# Keep the cigar's original material so its painted
+			# red tip is not overwritten by Soulanki's blue shader.
+			if (
+				\"cigar\" not in mesh_name
+				and \"cigarette\" not in mesh_name
+				and \"cig\" not in mesh_name
+			):
+				mesh_instance.material_override = (
+					_create_blue_material()
+				)
+
+		_apply_blue_shader(child)
+
+
+func _create_blue_material() -> ShaderMaterial:
+	var shader: Shader = Shader.new()
+
+	shader.code = \"\"\"
+shader_type spatial;
+
+render_mode unshaded, cull_back;
+
+void fragment()
+{
+	ALBEDO = vec3(
+		0.02,
+		0.22,
+		1.0
+	);
+
+	ROUGHNESS = 1.0;
+}
+\"\"\"
+
+	var material: ShaderMaterial = (
+		ShaderMaterial.new()
+	)
+
+	material.shader = shader
+
+	return material
+
+
+# ============================================================
+# CIGAR SMOKE
+# ============================================================
+
+func _build_cigar_smoke(root: Node3D) -> void:
+	var skeleton: Skeleton3D = _find_skeleton(root)
+
+	if skeleton == null:
+		push_warning(\"No Skeleton3D found for cigar smoke.\")
+		return
+
+	var right_hand_bone: StringName = _find_right_hand_bone(skeleton)
+
+	if right_hand_bone == StringName(\"\"):
+		push_warning(\"No right-hand bone found for cigar smoke.\")
+		return
+
+	var attachment := BoneAttachment3D.new()
+	attachment.name = \"CigarSmokeAttachment\"
+	attachment.bone_name = right_hand_bone
+	skeleton.add_child(attachment)
+
+	# Move the emitter slightly forward/up from the hand so the
+	# smoke comes from the cigar rather than the palm.
+	attachment.position = Vector3(0.08, 0.10, 0.10)
+
+	cigar_smoke = GPUParticles3D.new()
+	cigar_smoke.name = \"CigarSmoke\"
+	cigar_smoke.amount = 18
+	cigar_smoke.lifetime = 2.4
+	cigar_smoke.randomness = 0.45
+	cigar_smoke.preprocess = 1.0
+	cigar_smoke.local_coords = false
+	cigar_smoke.visibility_aabb = AABB(
+		Vector3(-1.0, -0.5, -1.0),
+		Vector3(2.0, 3.0, 2.0)
+	)
+
+	var process_material := ParticleProcessMaterial.new()
+	process_material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	process_material.emission_sphere_radius = 0.025
+	process_material.direction = Vector3(0.0, 1.0, 0.0)
+	process_material.spread = 28.0
+	process_material.initial_velocity_min = 0.08
+	process_material.initial_velocity_max = 0.22
+	process_material.gravity = Vector3(0.0, 0.035, 0.0)
+	process_material.scale_min = 0.10
+	process_material.scale_max = 0.24
+	process_material.color = Color(0.72, 0.76, 0.82, 0.30)
+
+	cigar_smoke.process_material = process_material
+
+	var smoke_mesh := QuadMesh.new()
+	smoke_mesh.size = Vector2(0.12, 0.12)
+
+	var smoke_material := StandardMaterial3D.new()
+	smoke_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	smoke_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	smoke_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	smoke_material.albedo_color = Color(0.70, 0.74, 0.80, 0.28)
+	smoke_material.no_depth_test = true
+
+	smoke_mesh.material = smoke_material
+	cigar_smoke.draw_pass_1 = smoke_mesh
+
+	attachment.add_child(cigar_smoke)
+
+
+func _build_cigar_tip(root: Node3D) -> void:
+	var skeleton: Skeleton3D = _find_skeleton(root)
+
+	if skeleton == null:
+		return
+
+	var right_hand_bone: StringName = _find_right_hand_bone(skeleton)
+
+	if right_hand_bone == StringName(\"\"):
+		return
+
+	var attachment := BoneAttachment3D.new()
+	attachment.name = \"CigarTipAttachment\"
+	attachment.bone_name = right_hand_bone
+	attachment.position = Vector3(0.08, 0.10, 0.10)
+	skeleton.add_child(attachment)
+
+	# Small red ember at the cigar tip.
+	var ember := MeshInstance3D.new()
+	ember.name = \"CigarRedTip\"
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.025
+	mesh.height = 0.050
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(1.0, 0.04, 0.01, 1.0)
+	material.emission_enabled = true
+	material.emission = Color(1.0, 0.02, 0.005, 1.0)
+	material.emission_energy_multiplier = 3.0
+	mesh.material = material
+	ember.mesh = mesh
+	attachment.add_child(ember)
+
+	cigar_tip_glow = OmniLight3D.new()
+	cigar_tip_glow.name = \"CigarTipRedGlow\"
+	cigar_tip_glow.light_color = Color(1.0, 0.05, 0.01, 1.0)
+	cigar_tip_glow.light_energy = 0.35
+	cigar_tip_glow.omni_range = 0.60
+	attachment.add_child(cigar_tip_glow)
+
+
+func _find_skeleton(root: Node) -> Skeleton3D:
+	if root is Skeleton3D:
+		return root as Skeleton3D
+
+	for child: Node in root.get_children():
+		var found := _find_skeleton(child)
+		if found != null:
+			return found
+
+	return null
+
+
+func _find_right_hand_bone(skeleton: Skeleton3D) -> StringName:
+	var candidates: Array[String] = [
+		\"RightHand\",
+		\"right_hand\",
+		\"Right_Hand\",
+		\"hand_r\",
+		\"Hand.R\",
+		\"mixamorig:RightHand\",
+		\"mixamorig_RightHand\",
+		\"RightHandBone\"
+	]
+
+	for candidate: String in candidates:
+		var idx := skeleton.find_bone(candidate)
+		if idx >= 0:
+			return skeleton.get_bone_name(idx)
+
+	for i: int in range(skeleton.get_bone_count()):
+		var bone_name := str(skeleton.get_bone_name(i)).to_lower()
+		if \"hand\" in bone_name and (\"right\" in bone_name or \".r\" in bone_name or \"_r\" in bone_name):
+			return skeleton.get_bone_name(i)
+
+	return StringName(\"\")
+
+
+# ============================================================
+# DIALOGUE UI
+# ============================================================
+
+func _build_ui() -> void:
+	var canvas: CanvasLayer = CanvasLayer.new()
+
+	canvas.name = \"CinematicUI\"
+
+	add_child(canvas)
+
+	# ========================================================
+	# DIALOGUE PANEL
+	# ========================================================
+
+	dialogue_panel = Panel.new()
+
+	dialogue_panel.name = \"DialoguePanel\"
+
+	# FULL WIDTH.
+	dialogue_panel.set_anchors_preset(
+		Control.PRESET_BOTTOM_WIDE
+	)
+
+	dialogue_panel.anchor_left = 0.0
+	dialogue_panel.anchor_right = 1.0
+
+	dialogue_panel.anchor_top = 1.0
+	dialogue_panel.anchor_bottom = 1.0
+
+	dialogue_panel.offset_left = 35.0
+	dialogue_panel.offset_right = -35.0
+
+	dialogue_panel.offset_top = -180.0
+	dialogue_panel.offset_bottom = -25.0
+
+	dialogue_panel.mouse_filter = (
+		Control.MOUSE_FILTER_IGNORE
+	)
+
+	var panel_style: StyleBoxFlat = (
+		StyleBoxFlat.new()
+	)
+
+	panel_style.bg_color = Color(
+		0.005,
+		0.005,
+		0.008,
+		0.96
+	)
+
+	panel_style.border_color = Color(
+		0.75,
+		0.82,
+		1.0,
+		1.0
+	)
+
+	panel_style.set_border_width_all(3)
+
+	panel_style.corner_radius_top_left = 16
+	panel_style.corner_radius_top_right = 16
+	panel_style.corner_radius_bottom_left = 16
+	panel_style.corner_radius_bottom_right = 16
+
+	panel_style.shadow_color = Color(
+		0.0,
+		0.0,
+		0.0,
+		0.75
+	)
+
+	panel_style.shadow_size = 10
+
+	dialogue_panel.add_theme_stylebox_override(
+		\"panel\",
+		panel_style
+	)
+
+	canvas.add_child(
+		dialogue_panel
+	)
+
+	# ========================================================
+	# MARGIN CONTAINER
+	# ========================================================
+
+	var margin: MarginContainer = (
+		MarginContainer.new()
+	)
+
+	margin.set_anchors_preset(
+		Control.PRESET_FULL_RECT
+	)
+
+	margin.add_theme_constant_override(
+		\"margin_left\",
+		25
+	)
+
+	margin.add_theme_constant_override(
+		\"margin_right\",
+		25
+	)
+
+	margin.add_theme_constant_override(
+		\"margin_top\",
+		12
+	)
+
+	margin.add_theme_constant_override(
+		\"margin_bottom\",
+		12
+	)
+
+	dialogue_panel.add_child(
+		margin
+	)
+
+	# ========================================================
+	# VERTICAL LAYOUT
+	# ========================================================
+
+	var box: VBoxContainer = (
+		VBoxContainer.new()
+	)
+
+	box.add_theme_constant_override(
+		\"separation\",
+		2
+	)
+
+	margin.add_child(box)
+
+	# ========================================================
+	# SPEAKER
+	# ========================================================
+
+	dialogue_name = Label.new()
+
+	dialogue_name.name = \"DialogueName\"
+
+	dialogue_name.custom_minimum_size = Vector2(
+		0.0,
+		38.0
+	)
+
+	dialogue_name.add_theme_font_size_override(
+		\"font_size\",
+		29
+	)
+
+	dialogue_name.add_theme_color_override(
+		\"font_color\",
+		Color(
+			0.35,
+			0.65,
+			1.0,
+			1.0
+		)
+	)
+
+	dialogue_name.vertical_alignment = (
+		VERTICAL_ALIGNMENT_CENTER
+	)
+
+	box.add_child(
+		dialogue_name
+	)
+
+	# ========================================================
+	# TEXT
+	# ========================================================
+
+	dialogue_text = Label.new()
+
+	dialogue_text.name = \"DialogueText\"
+
+	dialogue_text.size_flags_horizontal = (
+		Control.SIZE_EXPAND_FILL
+	)
+
+	dialogue_text.size_flags_vertical = (
+		Control.SIZE_EXPAND_FILL
+	)
+
+	dialogue_text.add_theme_font_size_override(
+		\"font_size\",
+		23
+	)
+
+	dialogue_text.add_theme_color_override(
+		\"font_color\",
+		Color.WHITE
+	)
+
+	dialogue_text.vertical_alignment = (
+		VERTICAL_ALIGNMENT_TOP
+	)
+
+	dialogue_text.horizontal_alignment = (
+		HORIZONTAL_ALIGNMENT_LEFT
+	)
+
+	dialogue_text.autowrap_mode = (
+		TextServer.AUTOWRAP_WORD_SMART
+	)
+
+	dialogue_text.clip_text = false
+
+	box.add_child(
+		dialogue_text
+	)
+
+	# ========================================================
+	# FONT
+	# ========================================================
+
+	var font: Font = null
+
+	if ResourceLoader.exists(FONT_PATH):
+		font = load(FONT_PATH) as Font
+
+	if font != null:
+		dialogue_name.add_theme_font_override(
+			\"font\",
+			font
+		)
+
+		dialogue_text.add_theme_font_override(
+			\"font\",
+			font
+		)
+
+	dialogue_panel.visible = false
+
+
+# ============================================================
+# VISUAL MODE
+# ============================================================
+
+func _set_opening_visuals() -> void:
+	if environment == null:
+		return
+
+	environment.background_mode = (
+		Environment.BG_COLOR
+	)
+
+	environment.background_color = Color.BLACK
+
+	environment.fog_enabled = true
+
+	environment.fog_light_color = Color(
+		0.01,
+		0.02,
+		0.05,
+		1.0
+	)
+
+	environment.fog_density = 0.018
+
+	if snow_particles != null:
+		snow_particles.visible = true
+
+	if black_leaves != null:
+		black_leaves.visible = false
+
+	if player_character != null:
+		player_character.visible = true
+
+
+func _set_train_visuals() -> void:
+	if environment == null:
+		return
+
+	environment.background_mode = (
+		Environment.BG_COLOR
+	)
+
+	environment.background_color = Color.BLACK
+
+	environment.fog_enabled = false
+
+	if snow_particles != null:
+		snow_particles.visible = false
+
+	if black_leaves != null:
+		black_leaves.visible = false
+
+	if player_character != null:
+		player_character.visible = true
+
+
+func _set_ending_visuals() -> void:
+	if environment == null:
+		return
+
+	environment.background_mode = (
+		Environment.BG_COLOR
+	)
+
+	environment.background_color = Color(
+		0.35,
+		0.55,
+		0.85,
+		1.0
+	)
+
+	environment.fog_enabled = false
+
+	if snow_particles != null:
+		snow_particles.visible = false
+
+	if player_character != null:
+		player_character.visible = true
+
+	if black_leaves != null:
+		black_leaves.visible = true
+
+
+# ============================================================
+# CINEMATIC FLOW
+# ============================================================
+
+func _start_cinematic() -> void:
+	await _play_opening()
+
+
+# ============================================================
+# DIALOGUE
+# ============================================================
+
+# Replace your entire _play_dialogue() function with this:
+
+func _play_dialogue(lines: Array) -> void:
+	if lines.is_empty():
+		return
+
+	dialogue_panel.visible = true
+
+	for entry: Variant in lines:
+		var dialogue_entry: Array = entry as Array
+
+		if dialogue_entry.size() < 2:
+			continue
+
+		var speaker: String = str(dialogue_entry[0])
+		var text_value: String = str(dialogue_entry[1])
+
+		dialogue_name.text = speaker
+		dialogue_text.text = \"\"
+
+		# Control = light green.
+		if speaker.to_lower() == \"control\":
+			dialogue_name.add_theme_color_override(
+				\"font_color\",
+				Color(0.55, 1.0, 0.60, 1.0)
+			)
+		elif speaker.to_lower() == \"soulanki\":
+			dialogue_name.add_theme_color_override(
+				\"font_color\",
+				Color(0.35, 0.65, 1.0, 1.0)
+			)
+		else:
+			# Recruits = white.
+			dialogue_name.add_theme_color_override(
+				\"font_color\",
+				Color.WHITE
+			)
+
+		dialogue_panel.queue_redraw()
+
+		await get_tree().process_frame
+
+		# Typewriter.
+		for i: int in range(1, text_value.length() + 1):
+			dialogue_text.text = text_value.substr(0, i)
+			await get_tree().create_timer(0.018).timeout
+
+		# Total time per message stays around 2–3 seconds.
+		var typing_time: float = float(text_value.length()) * 0.018
+		var line_duration: float = clampf(
+			typing_time + 1.0,
+			DIALOGUE_MIN_TIME,
+			DIALOGUE_TIME_PER_LINE
+		)
+		var remaining_time: float = maxf(
+			0.5,
+			line_duration - typing_time
+		)
+
+		await get_tree().create_timer(remaining_time).timeout
+
+	dialogue_panel.visible = false
+"
+
+[node name="cinematic_1_opening" type="Node3D" unique_id=649384929]
+script = SubResource("GDScript_x5ujm")
+auto_start = true

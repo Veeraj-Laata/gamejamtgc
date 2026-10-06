@@ -1,0 +1,1485 @@
+[gd_scene format=3 uid="uid://dcsq8bcb3yjjx"]
+
+[ext_resource type="Script" uid="uid://bdlo6o6f3kh0r" path="res://scripts/comic_bootstrap_room2.gd" id="1_axl5v"]
+[ext_resource type="Script" uid="uid://ontx8vjvdggi" path="res://scripts/comic_proximity_room2.gd" id="2_axl5v"]
+[ext_resource type="Script" uid="uid://b1tgmkeqbn1k5" path="res://scripts/player.gd" id="3_o70yj"]
+[ext_resource type="PackedScene" uid="uid://bk6abniug4wad" path="res://assets/station1_vibrant.glb" id="4_o0lfu"]
+[ext_resource type="PackedScene" uid="uid://du1nlp0koywjp" path="res://assets/animations/MainCharacterExplorationMoving.fbx" id="4_xh0ss"]
+[ext_resource type="PackedScene" uid="uid://bflides161x4" path="res://assets/animations/MainCharacterExplorationIdle.fbx" id="5_terpr"]
+[ext_resource type="Texture2D" uid="uid://cce0r3k6o5efp" path="res://assets/the new textures/textures/concrete_damaged.png" id="5_xh0ss"]
+[ext_resource type="Texture2D" uid="uid://b413y05fj82t0" path="res://assets/the new textures/textures/concrete_dark.png" id="6_terpr"]
+[ext_resource type="Texture2D" uid="uid://08fn5slrw45f" path="res://assets/the new textures/textures/warning_stripe.png" id="7_uqqfu"]
+[ext_resource type="Texture2D" uid="uid://db8i1f1f1klhe" path="res://assets/the new textures/textures/concrete_worn.png" id="8_4p3nj"]
+[ext_resource type="Texture2D" uid="uid://dbyak3w8ru16o" path="res://assets/the new textures/textures/dirty_tile.png" id="9_wxhln"]
+[ext_resource type="Texture2D" uid="uid://7vbwenbjdj60" path="res://assets/the new textures/textures/rail_dark.png" id="10_gaolv"]
+[ext_resource type="Texture2D" uid="uid://ckkfxuubqhkxl" path="res://assets/the new textures/textures/dark_metal.png" id="11_0rofi"]
+[ext_resource type="Texture2D" uid="uid://7g5shlhg1ujj" path="res://assets/the new textures/textures/rusty_metal.png" id="12_aqcml"]
+[ext_resource type="Texture2D" uid="uid://ccl5srau28tq7" path="res://assets/the new textures/textures/old_tile.png" id="13_tp2vi"]
+[ext_resource type="Texture2D" uid="uid://cvmn7aciwlw64" path="res://assets/the new textures/textures/faded_sign_paint.png" id="14_o76f6"]
+[ext_resource type="Texture2D" uid="uid://dswbajjx80fli" path="res://assets/the new textures/textures/rubber.png" id="15_xxeni"]
+[ext_resource type="PackedScene" uid="uid://ept2gtqyyfk7" path="res://assets/stylized_subway_train (1).glb" id="16_qlm4h"]
+[ext_resource type="Script" uid="uid://xcvk4s6gb3me" path="res://battle/battle_trigger.gd" id="17_hc2f7"]
+[ext_resource type="Script" uid="uid://dmslpl2fcn4rt" path="res://battle/room_exit_room2.gd" id="18_tmy4j"]
+[ext_resource type="PackedScene" uid="uid://uvwnxfqhnfcm" path="res://assets/Zombie Agonizing.fbx" id="20_terpr"]
+[ext_resource type="Script" uid="uid://nn37rjsdekh7" path="res://scripts/zombie_agonizing.gd" id="21_uqqfu"]
+[ext_resource type="AudioStream" uid="uid://fye8qw4uq7ft" path="res://audio/music/traversal.ogg" id="23_uqqfu"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_13gqn"]
+
+[sub_resource type="Environment" id="Environment_uphwv"]
+fog_enabled = true
+fog_mode = 1
+fog_light_color = Color(0.052193433, 0.10026223, 0.19740129, 1)
+fog_light_energy = 4.0
+fog_density = 0.8189
+fog_depth_curve = 0.7845842
+fog_depth_begin = 3.0
+fog_depth_end = 55.0
+volumetric_fog_density = 0.0
+
+[sub_resource type="Shader" id="Shader_poonl"]
+code = "shader_type spatial;
+
+render_mode specular_disabled;
+
+uniform sampler2D albedo_tex : source_color, filter_nearest_mipmap, repeat_enable;
+uniform vec4 tint : source_color = vec4(1.0);
+
+group_uniforms halftone;
+
+uniform float halftone_scale : hint_range(4.0, 80.0) = 18.0;
+uniform float dot_size : hint_range(0.05, 0.9) = 0.38;
+uniform float dot_strength : hint_range(0.0, 1.0) = 0.35;
+
+group_uniforms comic;
+
+uniform float shadow_threshold : hint_range(0.0, 1.0) = 0.42;
+uniform float shadow_darkness : hint_range(0.0, 1.0) = 0.65;
+uniform float shadow_softness : hint_range(0.01, 0.5) = 0.12;
+
+varying vec2 material_uv;
+
+
+void vertex() {
+    material_uv = UV;
+}
+
+
+void fragment() {
+
+    vec3 base =
+        texture(albedo_tex, UV).rgb
+        * tint.rgb;
+
+    ALBEDO = base;
+
+    ROUGHNESS = 1.0;
+}
+
+
+void light() {
+
+    float attenuation = ATTENUATION;
+
+    float ndl =
+        clamp(
+            dot(NORMAL, LIGHT),
+            0.0,
+            1.0
+        )
+        * attenuation;
+
+
+    // =========================================================
+    // COMIC LIGHT BAND
+    // =========================================================
+
+    float light_band =
+        smoothstep(
+            shadow_threshold - shadow_softness,
+            shadow_threshold + shadow_softness,
+            ndl
+        );
+
+
+    // =========================================================
+    // UV-LOCKED HALFTONE
+    // =========================================================
+
+    vec2 uv =
+        material_uv
+        * halftone_scale;
+
+
+    vec2 cell =
+        fract(uv)
+        - 0.5;
+
+
+    float distance_to_center =
+        length(cell) * 2.0;
+
+
+    float radius =
+        dot_size;
+
+
+    float dot =
+        1.0 -
+        smoothstep(
+            radius - 0.04,
+            radius + 0.04,
+            distance_to_center
+        );
+
+
+    // Halftone is strongest in the shadow/mid-tone region.
+    float shade_amount =
+        1.0 - light_band;
+
+
+    dot *= shade_amount;
+
+
+    // =========================================================
+    // PRESERVE REAL LIGHTING
+    // =========================================================
+
+    float lighting =
+        mix(
+            shadow_darkness,
+            1.0,
+            light_band
+        );
+
+
+    // Halftone gently darkens the shaded regions.
+    lighting *=
+        1.0 -
+        dot * dot_strength;
+
+
+    lighting =
+        clamp(
+            lighting,
+            0.0,
+            1.0
+        );
+
+
+    DIFFUSE_LIGHT +=
+        LIGHT_COLOR
+        * ndl
+        * lighting
+        / PI;
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0cl5n"]
+render_priority = 0
+shader = SubResource("Shader_poonl")
+shader_parameter/albedo_tex = ExtResource("5_xh0ss")
+shader_parameter/tint = Color(1, 1, 1, 1)
+shader_parameter/halftone_scale = 18.0
+shader_parameter/dot_size = 0.38
+shader_parameter/dot_strength = 0.35
+shader_parameter/shadow_threshold = 0.42
+shader_parameter/shadow_darkness = 0.65
+shader_parameter/shadow_softness = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_orwoe"]
+render_priority = 0
+shader = SubResource("Shader_poonl")
+shader_parameter/albedo_tex = ExtResource("6_terpr")
+shader_parameter/tint = Color(1, 1, 1, 1)
+shader_parameter/halftone_scale = 18.0
+shader_parameter/dot_size = 0.38
+shader_parameter/dot_strength = 0.35
+shader_parameter/shadow_threshold = 0.42
+shader_parameter/shadow_darkness = 0.65
+shader_parameter/shadow_softness = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2g7h0"]
+render_priority = 0
+shader = SubResource("Shader_poonl")
+shader_parameter/albedo_tex = ExtResource("7_uqqfu")
+shader_parameter/tint = Color(1, 1, 1, 1)
+shader_parameter/halftone_scale = 18.0
+shader_parameter/dot_size = 0.38
+shader_parameter/dot_strength = 0.35
+shader_parameter/shadow_threshold = 0.42
+shader_parameter/shadow_darkness = 0.65
+shader_parameter/shadow_softness = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tudes"]
+render_priority = 0
+shader = SubResource("Shader_poonl")
+shader_parameter/albedo_tex = ExtResource("8_4p3nj")
+shader_parameter/tint = Color(1, 1, 1, 1)
+shader_parameter/halftone_scale = 18.0
+shader_parameter/dot_size = 0.38
+shader_parameter/dot_strength = 0.35
+shader_parameter/shadow_threshold = 0.42
+shader_parameter/shadow_darkness = 0.65
+shader_parameter/shadow_softness = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_28ccu"]
+render_priority = 0
+shader = SubResource("Shader_poonl")
+shader_parameter/albedo_tex = ExtResource("9_wxhln")
+shader_parameter/tint = Color(1, 1, 1, 1)
+shader_parameter/halftone_scale = 18.0
+shader_parameter/dot_size = 0.38
+shader_parameter/dot_strength = 0.35
+shader_parameter/shadow_threshold = 0.42
+shader_parameter/shadow_darkness = 0.65
+shader_parameter/shadow_softness = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8x7ix"]
+render_priority = 0
+shader = SubResource("Shader_poonl")
+shader_parameter/albedo_tex = ExtResource("10_gaolv")
+shader_parameter/tint = Color(1, 1, 1, 1)
+shader_parameter/halftone_scale = 18.0
+shader_parameter/dot_size = 0.38
+shader_parameter/dot_strength = 0.35
+shader_parameter/shadow_threshold = 0.42
+shader_parameter/shadow_darkness = 0.65
+shader_parameter/shadow_softness = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_800ka"]
+render_priority = 0
+shader = SubResource("Shader_poonl")
+shader_parameter/albedo_tex = ExtResource("11_0rofi")
+shader_parameter/tint = Color(1, 1, 1, 1)
+shader_parameter/halftone_scale = 18.0
+shader_parameter/dot_size = 0.38
+shader_parameter/dot_strength = 0.35
+shader_parameter/shadow_threshold = 0.42
+shader_parameter/shadow_darkness = 0.65
+shader_parameter/shadow_softness = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_epkwt"]
+render_priority = 0
+shader = SubResource("Shader_poonl")
+shader_parameter/albedo_tex = ExtResource("12_aqcml")
+shader_parameter/tint = Color(1, 1, 1, 1)
+shader_parameter/halftone_scale = 18.0
+shader_parameter/dot_size = 0.38
+shader_parameter/dot_strength = 0.35
+shader_parameter/shadow_threshold = 0.42
+shader_parameter/shadow_darkness = 0.65
+shader_parameter/shadow_softness = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_cr0fx"]
+render_priority = 0
+shader = SubResource("Shader_poonl")
+shader_parameter/albedo_tex = ExtResource("13_tp2vi")
+shader_parameter/tint = Color(1, 1, 1, 1)
+shader_parameter/halftone_scale = 18.0
+shader_parameter/dot_size = 0.38
+shader_parameter/dot_strength = 0.35
+shader_parameter/shadow_threshold = 0.42
+shader_parameter/shadow_darkness = 0.65
+shader_parameter/shadow_softness = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_d5kqy"]
+render_priority = 0
+shader = SubResource("Shader_poonl")
+shader_parameter/albedo_tex = ExtResource("14_o76f6")
+shader_parameter/tint = Color(1, 1, 1, 1)
+shader_parameter/halftone_scale = 18.0
+shader_parameter/dot_size = 0.38
+shader_parameter/dot_strength = 0.35
+shader_parameter/shadow_threshold = 0.42
+shader_parameter/shadow_darkness = 0.65
+shader_parameter/shadow_softness = 0.12
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8uks5"]
+render_priority = 0
+shader = SubResource("Shader_poonl")
+shader_parameter/albedo_tex = ExtResource("15_xxeni")
+shader_parameter/tint = Color(1, 1, 1, 1)
+shader_parameter/halftone_scale = 18.0
+shader_parameter/dot_size = 0.38
+shader_parameter/dot_strength = 0.35
+shader_parameter/shadow_threshold = 0.42
+shader_parameter/shadow_darkness = 0.65
+shader_parameter/shadow_softness = 0.12
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_uphwv"]
+size = Vector3(1, 1.3818359, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_platform_edge"]
+size = Vector3(72, 2, 0.3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_platform_floor"]
+size = Vector3(72, 0.55, 6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_track_floor"]
+size = Vector3(72, 0.5, 6)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_uphwv"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_o70yj"]
+
+[node name="traversal" type="Node3D" unique_id=1109467774]
+script = ExtResource("1_axl5v")
+
+[node name="comic_proximity" type="Node3D" parent="." unique_id=711846199]
+script = ExtResource("2_axl5v")
+
+[node name="player" type="CharacterBody3D" parent="." unique_id=554732734]
+transform = Transform3D(-4.3711385e-08, 0, 0.99999994, 0, 1, 0, -0.99999994, 0, -4.3711385e-08, 47.296658, 0.9143865, 0)
+script = ExtResource("3_o70yj")
+
+[node name="MainCharacterExplorationMoving" parent="player" unique_id=616907907 instance=ExtResource("4_xh0ss")]
+transform = Transform3D(-1.417198, 0, -0.08916269, 0, 1.42, 0, 0.08916269, 0, -1.417198, 0, -0.72, 0)
+
+[node name="Skeleton3D2" type="Skeleton3D" parent="player/MainCharacterExplorationMoving" unique_id=1946009219]
+
+[node name="MainCharacterExplorationIdle" parent="player" unique_id=679976601 instance=ExtResource("5_terpr")]
+transform = Transform3D(-1.422188, 0, -0.089476645, 0, 1.425, 0, 0.089476645, 0, -1.422188, 0, -0.72, 0)
+
+[node name="Skeleton3D2" type="Skeleton3D" parent="player/MainCharacterExplorationIdle" unique_id=1662094292]
+
+[node name="proofcamera" type="Camera3D" parent="player" unique_id=866164905]
+transform = Transform3D(1, 9.4798684e-09, 1.0403518e-09, -9.479868e-09, 0.9761996, 0.21687402, 1.0403483e-09, -0.216874, 0.9761996, 1.447, 1.776, 2.85)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="player" unique_id=376687703]
+shape = SubResource("CapsuleShape3D_13gqn")
+
+[node name="prooflight" type="DirectionalLight3D" parent="." unique_id=545116156]
+transform = Transform3D(0.46060005, 0.15129477, -0.87461835, -0.023691036, 0.9871104, 0.15827766, 0.88729143, -0.052182086, 0.45824742, 0, 1.7816675, -0.11712885)
+
+[node name="fpslabel" type="Label" parent="." unique_id=1234347790]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 60.0
+offset_bottom = 43.0
+text = "FPS: --"
+metadata/_edit_use_anchors_ = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=119525993]
+environment = SubResource("Environment_uphwv")
+
+[node name="station_01" parent="." unique_id=1665804730 instance=ExtResource("4_o0lfu")]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 20.493484, 0, -0.42003298)
+
+[node name="Station_Floor" parent="station_01" index="0" unique_id=906276909]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Back_Wall" parent="station_01" index="1" unique_id=1335221111]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Left_Side_Wall" parent="station_01" index="2" unique_id=1663420918]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Right_Side_Wall" parent="station_01" index="3" unique_id=2080497527]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Tunnel_End" parent="station_01" index="4" unique_id=322815503]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Tunnel_Opening" parent="station_01" index="5" unique_id=1036386294]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Tunnel_End_001" parent="station_01" index="6" unique_id=1949183347]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Tunnel_Opening_001" parent="station_01" index="7" unique_id=485174247]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Platform_Left" parent="station_01" index="8" unique_id=1744218026]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Right" parent="station_01" index="9" unique_id=19467744]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Edge_Left" parent="station_01" index="10" unique_id=951093130]
+surface_material_override/0 = SubResource("ShaderMaterial_2g7h0")
+
+[node name="Platform_Edge_Right" parent="station_01" index="11" unique_id=602934784]
+surface_material_override/0 = SubResource("ShaderMaterial_2g7h0")
+
+[node name="Platform_Panel" parent="station_01" index="12" unique_id=1250969281]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_001" parent="station_01" index="13" unique_id=1161237286]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_002" parent="station_01" index="14" unique_id=1288043888]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_003" parent="station_01" index="15" unique_id=362861601]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_004" parent="station_01" index="16" unique_id=1491578947]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_005" parent="station_01" index="17" unique_id=256593209]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Platform_Panel_006" parent="station_01" index="18" unique_id=395415584]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_007" parent="station_01" index="19" unique_id=1462972720]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Platform_Panel_008" parent="station_01" index="20" unique_id=99069881]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_009" parent="station_01" index="21" unique_id=1149219083]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_010" parent="station_01" index="22" unique_id=127043316]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_011" parent="station_01" index="23" unique_id=533832186]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_012" parent="station_01" index="24" unique_id=2003050275]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Platform_Panel_013" parent="station_01" index="25" unique_id=195830781]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Platform_Panel_014" parent="station_01" index="26" unique_id=331490731]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Platform_Panel_015" parent="station_01" index="27" unique_id=1703227074]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_016" parent="station_01" index="28" unique_id=752590622]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_017" parent="station_01" index="29" unique_id=339638193]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Platform_Panel_018" parent="station_01" index="30" unique_id=1557721902]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_019" parent="station_01" index="31" unique_id=381035366]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_020" parent="station_01" index="32" unique_id=2129931310]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_021" parent="station_01" index="33" unique_id=980979367]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_022" parent="station_01" index="34" unique_id=1349431707]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Platform_Panel_023" parent="station_01" index="35" unique_id=1350321616]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Platform_Panel_024" parent="station_01" index="36" unique_id=463132331]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_025" parent="station_01" index="37" unique_id=1113552799]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_026" parent="station_01" index="38" unique_id=361002865]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Platform_Panel_027" parent="station_01" index="39" unique_id=310704286]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_028" parent="station_01" index="40" unique_id=41689457]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_029" parent="station_01" index="41" unique_id=2051378696]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Platform_Panel_030" parent="station_01" index="42" unique_id=974342835]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_031" parent="station_01" index="43" unique_id=832283257]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Platform_Panel_032" parent="station_01" index="44" unique_id=1858127380]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_033" parent="station_01" index="45" unique_id=166538030]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Platform_Panel_034" parent="station_01" index="46" unique_id=187359791]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Platform_Panel_035" parent="station_01" index="47" unique_id=1270031600]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Track_Bed" parent="station_01" index="48" unique_id=2127786773]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Rail_-2_0" parent="station_01" index="49" unique_id=1963429405]
+surface_material_override/0 = SubResource("ShaderMaterial_8x7ix")
+
+[node name="Rail_2_0" parent="station_01" index="50" unique_id=241526985]
+surface_material_override/0 = SubResource("ShaderMaterial_8x7ix")
+
+[node name="Rail_Sleeper" parent="station_01" index="51" unique_id=1264311892]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_001" parent="station_01" index="52" unique_id=754705242]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_002" parent="station_01" index="53" unique_id=986072846]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_003" parent="station_01" index="54" unique_id=743019743]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_004" parent="station_01" index="55" unique_id=1150012691]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_005" parent="station_01" index="56" unique_id=1970266682]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_006" parent="station_01" index="57" unique_id=297376705]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_007" parent="station_01" index="58" unique_id=1962599167]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_008" parent="station_01" index="59" unique_id=650146340]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_009" parent="station_01" index="60" unique_id=2142401927]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_010" parent="station_01" index="61" unique_id=79507002]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_011" parent="station_01" index="62" unique_id=233378881]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_012" parent="station_01" index="63" unique_id=930411553]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_013" parent="station_01" index="64" unique_id=393836319]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_014" parent="station_01" index="65" unique_id=103833973]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_015" parent="station_01" index="66" unique_id=975789093]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_016" parent="station_01" index="67" unique_id=979052011]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_017" parent="station_01" index="68" unique_id=1793447706]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_018" parent="station_01" index="69" unique_id=626755241]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_019" parent="station_01" index="70" unique_id=1913877802]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_020" parent="station_01" index="71" unique_id=1404317681]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_021" parent="station_01" index="72" unique_id=1869645442]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_022" parent="station_01" index="73" unique_id=831245740]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_023" parent="station_01" index="74" unique_id=1910057786]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_024" parent="station_01" index="75" unique_id=87199582]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_025" parent="station_01" index="76" unique_id=1306975020]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_026" parent="station_01" index="77" unique_id=382504365]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_027" parent="station_01" index="78" unique_id=429776420]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_028" parent="station_01" index="79" unique_id=1414968819]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_029" parent="station_01" index="80" unique_id=1561803426]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_030" parent="station_01" index="81" unique_id=2108951538]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_031" parent="station_01" index="82" unique_id=191921358]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_032" parent="station_01" index="83" unique_id=1716745692]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_033" parent="station_01" index="84" unique_id=1939297045]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_034" parent="station_01" index="85" unique_id=489051275]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_035" parent="station_01" index="86" unique_id=1425762190]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_036" parent="station_01" index="87" unique_id=1437215610]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_037" parent="station_01" index="88" unique_id=54087401]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_038" parent="station_01" index="89" unique_id=1547566745]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_039" parent="station_01" index="90" unique_id=1612751530]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_040" parent="station_01" index="91" unique_id=2118872299]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_041" parent="station_01" index="92" unique_id=1692650045]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_042" parent="station_01" index="93" unique_id=2142901267]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_043" parent="station_01" index="94" unique_id=288735424]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_044" parent="station_01" index="95" unique_id=453219267]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_045" parent="station_01" index="96" unique_id=452613376]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_046" parent="station_01" index="97" unique_id=1572209911]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Rail_Sleeper_047" parent="station_01" index="98" unique_id=871543495]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Station_Column" parent="station_01" index="99" unique_id=653810116]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar" parent="station_01" index="100" unique_id=247176250]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_001" parent="station_01" index="101" unique_id=40692058]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_001" parent="station_01" index="102" unique_id=1132111064]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_002" parent="station_01" index="103" unique_id=941942978]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_002" parent="station_01" index="104" unique_id=670179720]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_003" parent="station_01" index="105" unique_id=2083521384]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_003" parent="station_01" index="106" unique_id=1085260141]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_004" parent="station_01" index="107" unique_id=1236942657]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_004" parent="station_01" index="108" unique_id=617828756]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_005" parent="station_01" index="109" unique_id=1242135881]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_005" parent="station_01" index="110" unique_id=31335452]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_006" parent="station_01" index="111" unique_id=736980724]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_006" parent="station_01" index="112" unique_id=992378509]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_007" parent="station_01" index="113" unique_id=1065817377]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_007" parent="station_01" index="114" unique_id=1293145077]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_008" parent="station_01" index="115" unique_id=175133672]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_008" parent="station_01" index="116" unique_id=1314062985]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_009" parent="station_01" index="117" unique_id=825335643]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_009" parent="station_01" index="118" unique_id=1031655433]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_010" parent="station_01" index="119" unique_id=670256334]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_010" parent="station_01" index="120" unique_id=1637433544]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_011" parent="station_01" index="121" unique_id=218925451]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_011" parent="station_01" index="122" unique_id=1368714852]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_012" parent="station_01" index="123" unique_id=1124609886]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_012" parent="station_01" index="124" unique_id=1857257181]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_013" parent="station_01" index="125" unique_id=2037742564]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_013" parent="station_01" index="126" unique_id=2067592555]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_014" parent="station_01" index="127" unique_id=1776577674]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_014" parent="station_01" index="128" unique_id=1434608789]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_015" parent="station_01" index="129" unique_id=1850964613]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_015" parent="station_01" index="130" unique_id=167292910]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_016" parent="station_01" index="131" unique_id=1056764475]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_016" parent="station_01" index="132" unique_id=79049716]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Station_Column_017" parent="station_01" index="133" unique_id=709029447]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Column_Collar_017" parent="station_01" index="134" unique_id=1673756838]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Ceiling" parent="station_01" index="135" unique_id=404475865]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Ceiling_Beam" parent="station_01" index="136" unique_id=1260766095]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Ceiling_Beam_001" parent="station_01" index="137" unique_id=2012081293]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Ceiling_Beam_002" parent="station_01" index="138" unique_id=1876776277]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Ceiling_Beam_003" parent="station_01" index="139" unique_id=926833916]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Ceiling_Beam_004" parent="station_01" index="140" unique_id=995286428]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Ceiling_Beam_005" parent="station_01" index="141" unique_id=787074500]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Ceiling_Beam_006" parent="station_01" index="142" unique_id=1624169658]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Ceiling_Beam_007" parent="station_01" index="143" unique_id=1905690500]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Ceiling_Beam_008" parent="station_01" index="144" unique_id=1163924917]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Dead_Ceiling_Fixture" parent="station_01" index="145" unique_id=1254750490]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_001" parent="station_01" index="146" unique_id=1425524526]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_002" parent="station_01" index="147" unique_id=599210386]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_003" parent="station_01" index="148" unique_id=839459937]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_004" parent="station_01" index="149" unique_id=1243046890]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_005" parent="station_01" index="150" unique_id=692855162]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_006" parent="station_01" index="151" unique_id=1722850454]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_007" parent="station_01" index="152" unique_id=1195344230]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_008" parent="station_01" index="153" unique_id=108650547]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_009" parent="station_01" index="154" unique_id=242595374]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_010" parent="station_01" index="155" unique_id=1514409593]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_011" parent="station_01" index="156" unique_id=810531926]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_012" parent="station_01" index="157" unique_id=13618429]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_013" parent="station_01" index="158" unique_id=568532296]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_014" parent="station_01" index="159" unique_id=1318311081]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_015" parent="station_01" index="160" unique_id=1374507814]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_016" parent="station_01" index="161" unique_id=900157638]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Dead_Ceiling_Fixture_017" parent="station_01" index="162" unique_id=910521836]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Broken_Stair" parent="station_01" index="163" unique_id=1351429184]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Broken_Stair_001" parent="station_01" index="164" unique_id=1991041942]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Broken_Stair_002" parent="station_01" index="165" unique_id=1818554327]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Broken_Stair_003" parent="station_01" index="166" unique_id=1664455186]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Broken_Stair_004" parent="station_01" index="167" unique_id=674432105]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Broken_Stair_005" parent="station_01" index="168" unique_id=1267692125]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Broken_Stair_006" parent="station_01" index="169" unique_id=1197491670]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Broken_Stair_007" parent="station_01" index="170" unique_id=2045279755]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Broken_Stair_008" parent="station_01" index="171" unique_id=1628670607]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Broken_Stair_009" parent="station_01" index="172" unique_id=1919669988]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Old_Bench_Seat" parent="station_01" index="173" unique_id=259243622]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Old_Bench_Back" parent="station_01" index="174" unique_id=2134620583]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg" parent="station_01" index="175" unique_id=255051971]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_001" parent="station_01" index="176" unique_id=1731717156]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Old_Bench_Seat_001" parent="station_01" index="177" unique_id=962010472]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Old_Bench_Back_001" parent="station_01" index="178" unique_id=2035709874]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_002" parent="station_01" index="179" unique_id=608860877]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_003" parent="station_01" index="180" unique_id=701597101]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Old_Bench_Seat_002" parent="station_01" index="181" unique_id=863334011]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Old_Bench_Back_002" parent="station_01" index="182" unique_id=833010527]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_004" parent="station_01" index="183" unique_id=2023365943]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_005" parent="station_01" index="184" unique_id=428555956]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Old_Bench_Seat_003" parent="station_01" index="185" unique_id=932525950]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Old_Bench_Back_003" parent="station_01" index="186" unique_id=1103707179]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_006" parent="station_01" index="187" unique_id=532743572]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_007" parent="station_01" index="188" unique_id=1983977624]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Old_Bench_Seat_004" parent="station_01" index="189" unique_id=317146161]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Old_Bench_Back_004" parent="station_01" index="190" unique_id=625173285]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_008" parent="station_01" index="191" unique_id=1058962494]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_009" parent="station_01" index="192" unique_id=479917804]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Old_Bench_Seat_005" parent="station_01" index="193" unique_id=273403234]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Old_Bench_Back_005" parent="station_01" index="194" unique_id=1338230903]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_010" parent="station_01" index="195" unique_id=1143711228]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_011" parent="station_01" index="196" unique_id=962003852]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Old_Bench_Seat_006" parent="station_01" index="197" unique_id=1718711053]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Old_Bench_Back_006" parent="station_01" index="198" unique_id=462506715]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_012" parent="station_01" index="199" unique_id=1482658639]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Bench_Leg_013" parent="station_01" index="200" unique_id=521138744]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Ticket_Counter" parent="station_01" index="201" unique_id=85021496]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="Broken_Turnstile" parent="station_01" index="202" unique_id=717334367]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Broken_Turnstile_001" parent="station_01" index="203" unique_id=828054240]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Broken_Turnstile_002" parent="station_01" index="204" unique_id=878158538]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Wall_Worn_Panel" parent="station_01" index="205" unique_id=190273719]
+surface_material_override/0 = SubResource("ShaderMaterial_cr0fx")
+
+[node name="Wall_Worn_Panel_001" parent="station_01" index="206" unique_id=1698813205]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Wall_Worn_Panel_002" parent="station_01" index="207" unique_id=1807889785]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Wall_Worn_Panel_003" parent="station_01" index="208" unique_id=1658371188]
+surface_material_override/0 = SubResource("ShaderMaterial_cr0fx")
+
+[node name="Wall_Worn_Panel_004" parent="station_01" index="209" unique_id=91785104]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Wall_Worn_Panel_005" parent="station_01" index="210" unique_id=1623571522]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Wall_Worn_Panel_006" parent="station_01" index="211" unique_id=1505090299]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Wall_Worn_Panel_007" parent="station_01" index="212" unique_id=850184090]
+surface_material_override/0 = SubResource("ShaderMaterial_cr0fx")
+
+[node name="Wall_Worn_Panel_008" parent="station_01" index="213" unique_id=36518644]
+surface_material_override/0 = SubResource("ShaderMaterial_cr0fx")
+
+[node name="Wall_Worn_Panel_009" parent="station_01" index="214" unique_id=1362969670]
+surface_material_override/0 = SubResource("ShaderMaterial_cr0fx")
+
+[node name="Wall_Worn_Panel_010" parent="station_01" index="215" unique_id=2113883660]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Wall_Worn_Panel_011" parent="station_01" index="216" unique_id=1116506934]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Wall_Worn_Panel_012" parent="station_01" index="217" unique_id=1260799006]
+surface_material_override/0 = SubResource("ShaderMaterial_28ccu")
+
+[node name="Wall_Worn_Panel_013" parent="station_01" index="218" unique_id=1758822410]
+surface_material_override/0 = SubResource("ShaderMaterial_cr0fx")
+
+[node name="Wall_Worn_Panel_014" parent="station_01" index="219" unique_id=1791971853]
+surface_material_override/0 = SubResource("ShaderMaterial_cr0fx")
+
+[node name="Wall_Worn_Panel_015" parent="station_01" index="220" unique_id=1666670371]
+surface_material_override/0 = SubResource("ShaderMaterial_cr0fx")
+
+[node name="Wall_Worn_Panel_016" parent="station_01" index="221" unique_id=1650445001]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Wall_Worn_Panel_017" parent="station_01" index="222" unique_id=830476544]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Upper_Wall_Band" parent="station_01" index="223" unique_id=887079403]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Broken_Wall_Patch" parent="station_01" index="224" unique_id=1926239201]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Broken_Wall_Patch_001" parent="station_01" index="225" unique_id=1471826005]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Broken_Wall_Patch_002" parent="station_01" index="226" unique_id=107117291]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Broken_Wall_Patch_003" parent="station_01" index="227" unique_id=1519929463]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Broken_Wall_Patch_004" parent="station_01" index="228" unique_id=327451555]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Broken_Wall_Patch_005" parent="station_01" index="229" unique_id=1606085235]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Broken_Wall_Patch_006" parent="station_01" index="230" unique_id=217061755]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Broken_Wall_Patch_007" parent="station_01" index="231" unique_id=185970852]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Broken_Wall_Patch_008" parent="station_01" index="232" unique_id=1777924514]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Broken_Wall_Patch_009" parent="station_01" index="233" unique_id=2087020994]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Broken_Wall_Patch_010" parent="station_01" index="234" unique_id=1844211651]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Broken_Wall_Patch_011" parent="station_01" index="235" unique_id=1039770373]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Broken_Wall_Patch_012" parent="station_01" index="236" unique_id=1619789075]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Broken_Wall_Patch_013" parent="station_01" index="237" unique_id=1636143209]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Broken_Wall_Patch_014" parent="station_01" index="238" unique_id=2063162420]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Broken_Wall_Patch_015" parent="station_01" index="239" unique_id=274274934]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Broken_Wall_Patch_016" parent="station_01" index="240" unique_id=236702395]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Broken_Wall_Patch_017" parent="station_01" index="241" unique_id=921588915]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="LowPoly_Rubble" parent="station_01" index="242" unique_id=1793937187]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="LowPoly_Rubble_001" parent="station_01" index="243" unique_id=2144085098]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="LowPoly_Rubble_002" parent="station_01" index="244" unique_id=922071009]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="LowPoly_Rubble_003" parent="station_01" index="245" unique_id=1425374827]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="LowPoly_Rubble_004" parent="station_01" index="246" unique_id=4632236]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="LowPoly_Rubble_005" parent="station_01" index="247" unique_id=770114412]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="LowPoly_Rubble_006" parent="station_01" index="248" unique_id=975722267]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="LowPoly_Rubble_007" parent="station_01" index="249" unique_id=351835797]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="LowPoly_Rubble_008" parent="station_01" index="250" unique_id=1141235130]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="LowPoly_Rubble_009" parent="station_01" index="251" unique_id=1245732158]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="LowPoly_Rubble_010" parent="station_01" index="252" unique_id=756881891]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="LowPoly_Rubble_011" parent="station_01" index="253" unique_id=641178426]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="LowPoly_Rubble_012" parent="station_01" index="254" unique_id=1876953559]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="LowPoly_Rubble_013" parent="station_01" index="255" unique_id=1620659187]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="LowPoly_Rubble_014" parent="station_01" index="256" unique_id=1110859044]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="LowPoly_Rubble_015" parent="station_01" index="257" unique_id=1462514139]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="LowPoly_Rubble_016" parent="station_01" index="258" unique_id=741638407]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="LowPoly_Rubble_017" parent="station_01" index="259" unique_id=1867154876]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="LowPoly_Rubble_018" parent="station_01" index="260" unique_id=1368313007]
+surface_material_override/0 = SubResource("ShaderMaterial_orwoe")
+
+[node name="LowPoly_Rubble_019" parent="station_01" index="261" unique_id=1536849905]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="LowPoly_Rubble_020" parent="station_01" index="262" unique_id=301721852]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="LowPoly_Rubble_021" parent="station_01" index="263" unique_id=947200975]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="LowPoly_Rubble_022" parent="station_01" index="264" unique_id=1962421080]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="LowPoly_Rubble_023" parent="station_01" index="265" unique_id=1954942756]
+surface_material_override/0 = SubResource("ShaderMaterial_tudes")
+
+[node name="Wreckage_Piece" parent="station_01" index="266" unique_id=1513371717]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Wreckage_Piece_001" parent="station_01" index="267" unique_id=1973061862]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_002" parent="station_01" index="268" unique_id=1065625065]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_003" parent="station_01" index="269" unique_id=1780166261]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Wreckage_Piece_004" parent="station_01" index="270" unique_id=1702092664]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Wreckage_Piece_005" parent="station_01" index="271" unique_id=1075209052]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_006" parent="station_01" index="272" unique_id=1042988796]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Wreckage_Piece_007" parent="station_01" index="273" unique_id=24341660]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_008" parent="station_01" index="274" unique_id=988394545]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_009" parent="station_01" index="275" unique_id=1011100293]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Wreckage_Piece_010" parent="station_01" index="276" unique_id=1107173456]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Wreckage_Piece_011" parent="station_01" index="277" unique_id=1815935044]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_012" parent="station_01" index="278" unique_id=750676089]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Wreckage_Piece_013" parent="station_01" index="279" unique_id=1553195428]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Wreckage_Piece_014" parent="station_01" index="280" unique_id=1032900081]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Wreckage_Piece_015" parent="station_01" index="281" unique_id=1175486629]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_016" parent="station_01" index="282" unique_id=882526775]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_017" parent="station_01" index="283" unique_id=384186693]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_018" parent="station_01" index="284" unique_id=1397334745]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Wreckage_Piece_019" parent="station_01" index="285" unique_id=701329855]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Wreckage_Piece_020" parent="station_01" index="286" unique_id=977140932]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Wreckage_Piece_021" parent="station_01" index="287" unique_id=50321669]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Wreckage_Piece_022" parent="station_01" index="288" unique_id=293725249]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Wreckage_Piece_023" parent="station_01" index="289" unique_id=1677230853]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Wreckage_Piece_024" parent="station_01" index="290" unique_id=715713172]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_025" parent="station_01" index="291" unique_id=1673290630]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Wreckage_Piece_026" parent="station_01" index="292" unique_id=1556101976]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_027" parent="station_01" index="293" unique_id=1707744656]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_028" parent="station_01" index="294" unique_id=796616164]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Wreckage_Piece_029" parent="station_01" index="295" unique_id=1427558755]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Wreckage_Piece_030" parent="station_01" index="296" unique_id=1432734940]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Wreckage_Piece_031" parent="station_01" index="297" unique_id=1250009740]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_032" parent="station_01" index="298" unique_id=725411893]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Wreckage_Piece_033" parent="station_01" index="299" unique_id=1128442330]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Fallen_Ceiling_Piece" parent="station_01" index="300" unique_id=2079725958]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Fallen_Ceiling_Piece_001" parent="station_01" index="301" unique_id=201262811]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Fallen_Ceiling_Piece_002" parent="station_01" index="302" unique_id=615064175]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Fallen_Ceiling_Piece_003" parent="station_01" index="303" unique_id=358989753]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Damaged_Floor_Patch" parent="station_01" index="304" unique_id=1849409608]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Damaged_Floor_Patch_001" parent="station_01" index="305" unique_id=1003114316]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Damaged_Floor_Patch_002" parent="station_01" index="306" unique_id=825821886]
+surface_material_override/0 = SubResource("ShaderMaterial_0cl5n")
+
+[node name="Old_Station_Sign" parent="station_01" index="307" unique_id=704392295]
+surface_material_override/0 = SubResource("ShaderMaterial_d5kqy")
+
+[node name="Sign_Frame" parent="station_01" index="308" unique_id=1525607055]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Old_Station_Sign_001" parent="station_01" index="309" unique_id=1569258796]
+surface_material_override/0 = SubResource("ShaderMaterial_d5kqy")
+
+[node name="Sign_Frame_001" parent="station_01" index="310" unique_id=391653702]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Old_Station_Sign_002" parent="station_01" index="311" unique_id=435093057]
+surface_material_override/0 = SubResource("ShaderMaterial_d5kqy")
+
+[node name="Sign_Frame_002" parent="station_01" index="312" unique_id=537624323]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Old_Station_Sign_003" parent="station_01" index="313" unique_id=579823381]
+surface_material_override/0 = SubResource("ShaderMaterial_d5kqy")
+
+[node name="Sign_Frame_003" parent="station_01" index="314" unique_id=245704865]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Sign_Hanger" parent="station_01" index="315" unique_id=1732461977]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Sign_Hanger_001" parent="station_01" index="316" unique_id=1935001144]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Sign_Hanger_002" parent="station_01" index="317" unique_id=1435704288]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Sign_Hanger_003" parent="station_01" index="318" unique_id=479823204]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Long_Pipe_0" parent="station_01" index="319" unique_id=2083971568]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Long_Pipe_1" parent="station_01" index="320" unique_id=770354863]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Long_Pipe_2" parent="station_01" index="321" unique_id=1327980281]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Long_Pipe_3" parent="station_01" index="322" unique_id=667938463]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Long_Pipe_4" parent="station_01" index="323" unique_id=1806350397]
+surface_material_override/0 = SubResource("ShaderMaterial_epkwt")
+
+[node name="Pipe_Support" parent="station_01" index="324" unique_id=130934558]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Pipe_Support_001" parent="station_01" index="325" unique_id=1360218055]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Pipe_Support_002" parent="station_01" index="326" unique_id=974238890]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Pipe_Support_003" parent="station_01" index="327" unique_id=1542920432]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Pipe_Support_004" parent="station_01" index="328" unique_id=149564660]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Pipe_Support_005" parent="station_01" index="329" unique_id=1410040752]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Pipe_Support_006" parent="station_01" index="330" unique_id=1952168002]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Pipe_Support_007" parent="station_01" index="331" unique_id=2033319584]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Pipe_Support_008" parent="station_01" index="332" unique_id=1914809258]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Pipe_Support_009" parent="station_01" index="333" unique_id=1055620563]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Pipe_Support_010" parent="station_01" index="334" unique_id=1151197488]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Pipe_Support_011" parent="station_01" index="335" unique_id=925428337]
+surface_material_override/0 = SubResource("ShaderMaterial_800ka")
+
+[node name="Loose_Cable_0" parent="station_01" index="336" unique_id=1896544208]
+surface_material_override/0 = SubResource("ShaderMaterial_8uks5")
+
+[node name="Loose_Cable_1" parent="station_01" index="337" unique_id=1920319555]
+surface_material_override/0 = SubResource("ShaderMaterial_8uks5")
+
+[node name="Loose_Cable_2" parent="station_01" index="338" unique_id=974066016]
+surface_material_override/0 = SubResource("ShaderMaterial_8uks5")
+
+[node name="Loose_Cable_3" parent="station_01" index="339" unique_id=855318471]
+surface_material_override/0 = SubResource("ShaderMaterial_8uks5")
+
+[node name="Loose_Cable_4" parent="station_01" index="340" unique_id=130431323]
+surface_material_override/0 = SubResource("ShaderMaterial_8uks5")
+
+[node name="Loose_Cable_5" parent="station_01" index="341" unique_id=2090210164]
+surface_material_override/0 = SubResource("ShaderMaterial_8uks5")
+
+[node name="train" parent="." unique_id=1672801331 instance=ExtResource("16_qlm4h")]
+transform = Transform3D(0.0037981719, 0, 1.5149952, 0, 1.515, 0, -1.5149952, 0, 0.0037981719, -18.563278, 2.4123464, -0.19684052)
+
+[node name="invisblewall" type="StaticBody3D" parent="." unique_id=1181573936]
+transform = Transform3D(1.285, 0, 0, 0, 7.32, 0, 0, 0, 7.88, 47.859425, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="invisblewall" unique_id=1678738819]
+transform = Transform3D(0.9999999, 0, 0, 0, 1.07, 0, 0, 0, 0.8339989, 3.152752, 0.39720532, 0)
+shape = SubResource("BoxShape3D_uphwv")
+
+[node name="platform_edge_left_barrier" type="StaticBody3D" parent="." unique_id=274025320]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.4935, 1, -3.42)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="platform_edge_left_barrier" unique_id=903523242]
+shape = SubResource("BoxShape3D_platform_edge")
+
+[node name="platform_edge_right_barrier" type="StaticBody3D" parent="." unique_id=129855463]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.4935, 1, 2.58)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="platform_edge_right_barrier" unique_id=823525729]
+shape = SubResource("BoxShape3D_platform_edge")
+
+[node name="platform_floor_left" type="StaticBody3D" parent="." unique_id=934410117]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.4935, 0.275, -6.42)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="platform_floor_left" unique_id=1022452973]
+shape = SubResource("BoxShape3D_platform_floor")
+
+[node name="platform_floor_right" type="StaticBody3D" parent="." unique_id=2025687065]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.4935, 0.275, 5.58)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="platform_floor_right" unique_id=18341880]
+shape = SubResource("BoxShape3D_platform_floor")
+
+[node name="station_track_floor" type="StaticBody3D" parent="." unique_id=939767407]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.4935, -0.25, -0.42)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="station_track_floor" unique_id=1218203874]
+shape = SubResource("BoxShape3D_track_floor")
+
+[node name="BattleTrigger" type="Area3D" parent="." unique_id=1359515902]
+transform = Transform3D(2.085, 0, 0, 0, 2.085, 0, 0, 0, 2.085, 40.467793, 1.3348122, -0.3744707)
+script = ExtResource("17_hc2f7")
+interaction_distance = 5.0
+encounter_id = "traversal_enemy_03"
+
+[node name="ZombieAgonizing" parent="BattleTrigger" unique_id=785535394 instance=ExtResource("20_terpr")]
+transform = Transform3D(-0.004415442, 0, -0.22057933, 0, 0.22062351, 0, 0.22057933, 0, -0.004415442, -0.14305305, -0.3323857, 0.17960227)
+script = ExtResource("21_uqqfu")
+
+[node name="Skeleton3D2" type="Skeleton3D" parent="BattleTrigger/ZombieAgonizing" unique_id=852860451]
+
+[node name="BlockingBody" type="StaticBody3D" parent="BattleTrigger" unique_id=1404895076]
+transform = Transform3D(0.4796163, 0, 0, 0, 0.4796163, 0, 0, 0, 0.4796163, -19.409014, -0.6401977, 0.131511)
+
+[node name="Trigger" type="CollisionShape3D" parent="BattleTrigger/BlockingBody" unique_id=302038523]
+transform = Transform3D(6.405, 0, 0, 0, 6.405, 0, 0, 0, 6.405, 40.467793, 1.3348122, -0.27420044)
+shape = SubResource("SphereShape3D_uphwv")
+
+[node name="BattleTrigger2" type="Area3D" parent="." unique_id=304988860]
+transform = Transform3D(2.085, 0, 0, 0, 2.085, 0, 0, 0, 2.085, 4.681782, 1.3348122, -0.3744707)
+script = ExtResource("17_hc2f7")
+interaction_distance = 5.0
+encounter_id = "traversal_enemy_04"
+blocking_body_path = NodePath("BlockingBody2")
+
+[node name="ZombieAgonizing" parent="BattleTrigger2" unique_id=1423165125 instance=ExtResource("20_terpr")]
+transform = Transform3D(-0.005863947, 0, -0.29294133, 0, 0.29300007, 0, 0.29294133, 0, -0.005863947, 0.11424136, -0.43671614, 0.17960234)
+script = ExtResource("21_uqqfu")
+
+[node name="Skeleton3D2" type="Skeleton3D" parent="BattleTrigger2/ZombieAgonizing" unique_id=2028923829]
+
+[node name="BlockingBody2" type="StaticBody3D" parent="BattleTrigger2" unique_id=1829767810]
+transform = Transform3D(0.4796163, 0, 0, 0, 0.4796163, 0, 0, 0, 0.4796163, -19.409014, -0.6401977, 0.131511)
+
+[node name="Trigger2" type="CollisionShape3D" parent="BattleTrigger2/BlockingBody2" unique_id=742015538]
+transform = Transform3D(6.405, 0, 0, 0, 6.405, 0, 0, 0, 6.405, 40.467793, 1.3348122, -0.27420044)
+shape = SubResource("SphereShape3D_uphwv")
+
+[node name="RoomExit" type="Area3D" parent="." unique_id=450817248]
+transform = Transform3D(4.785, 0, 0, 0, 4.785, 0, 0, 0, 4.785, -3.6805146, 1.8604352, 0)
+script = ExtResource("18_tmy4j")
+
+[node name="ExitCollision" type="CollisionShape3D" parent="RoomExit" unique_id=1936992086]
+shape = SubResource("BoxShape3D_o70yj")
+
+[node name="TraversalMusic" type="AudioStreamPlayer" parent="." unique_id=850468607]
+stream = ExtResource("23_uqqfu")
+volume_db = -7.298
+autoplay = true
+
+[editable path="station_01"]

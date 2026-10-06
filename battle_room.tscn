@@ -75,3 +75,4 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.82496977, 0, 0)
 [node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=92794226]
 stream = ExtResource("4_c4u0s")
 volume_db = -7.298
+autoplay = true
